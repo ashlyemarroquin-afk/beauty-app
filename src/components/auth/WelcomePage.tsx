@@ -40,7 +40,7 @@ export function WelcomePage({ onChooseUserType, onLogin, onGuestMode }: WelcomeP
           <Text style={styles.sectionTitle}>What brings you here today?</Text>
           
           {/* Consumer Option */}
-          <TouchableOpacity onPress={() => onChooseUserType("consumer")}>
+          <TouchableOpacity onPress={() => onChooseUserType("consumer")} style={styles.firstOptionCard}>
             <Card style={styles.optionCard}>
               <CardContent style={styles.optionContent}>
                 <View style={styles.optionHeader}>
@@ -73,7 +73,7 @@ export function WelcomePage({ onChooseUserType, onLogin, onGuestMode }: WelcomeP
           </TouchableOpacity>
 
           {/* Provider Option */}
-          <TouchableOpacity onPress={() => onChooseUserType("provider")}>
+          <TouchableOpacity onPress={() => onChooseUserType("provider")} style={styles.optionCardWrapper}>
             <Card style={styles.optionCard}>
               <CardContent style={styles.optionContent}>
                 <View style={styles.optionHeader}>
@@ -197,7 +197,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   optionsSection: {
-    gap: 16,
     marginBottom: 32,
   },
   sectionTitle: {
@@ -205,13 +204,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     color: "#000",
-    marginBottom: 8,
+    marginBottom: 0,
   },
-  optionCard: {
+  firstOptionCard: {
+    marginTop: 20,
     marginBottom: 16,
   },
+  optionCardWrapper: {
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  optionCard: {
+    marginBottom: 0,
+  },
   optionContent: {
-    padding: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+    paddingLeft: 24,
+    paddingRight: 24,
   },
   optionHeader: {
     flexDirection: "row",
