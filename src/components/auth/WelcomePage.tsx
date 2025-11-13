@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Scissors, Users, Sparkles, Calendar, BookMarked } from "lucide-react-native";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
@@ -11,8 +12,17 @@ interface WelcomePageProps {
 }
 
 export function WelcomePage({ onChooseUserType, onLogin, onGuestMode }: WelcomePageProps) {
+  const insets = useSafeAreaInsets();
+  
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView 
+      style={[styles.scrollView, { backgroundColor: "#fff" }]}
+      contentContainerStyle={[
+        styles.container,
+        { paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 16) }
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.content}>
         {/* Logo and Header */}
         <View style={styles.logoSection}>
@@ -147,11 +157,15 @@ export function WelcomePage({ onChooseUserType, onLogin, onGuestMode }: WelcomeP
 }
 
 const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
   container: {
     flexGrow: 1,
     backgroundColor: "#fff",
     justifyContent: "center",
-    padding: 16,
+    paddingHorizontal: 16,
   },
   content: {
     width: "100%",
