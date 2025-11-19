@@ -6,6 +6,7 @@ import { Label } from "../ui/label";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { toast } from "sonner@2.0.3";
+import { signUp, updateUserData } from "../../lib/firebaseAuth";
 
 interface SignupPageProps {
   userType: "consumer" | "provider";
@@ -75,28 +76,44 @@ export function SignupPage({ userType, onSignupComplete, onBack, onLogin }: Sign
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
-      const userData = {
-        id: Date.now().toString(),
-        email: formData.email,
-        name: `${formData.firstName} ${formData.lastName}`,
-        type: userType,
-        isOnboarded: false,
+    // Create account with Firebase
+    try {
+      const fullName = `${formData.firstName} ${formData.lastName}`;
+      const userData = await signUp(
+        formData.email,
+        formData.password,
+        fullName,
+        userType
+      );
+
+      // Save additional user data to Firestore
+      const additionalData: any = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone,
-        ...(userType === "provider" && {
-          businessName: formData.businessName,
-          profession: formData.profession,
-          yearsExperience: formData.yearsExperience
-        })
+      };
+
+      if (userType === "provider") {
+        additionalData.businessName = formData.businessName;
+        additionalData.profession = formData.profession;
+        additionalData.yearsExperience = formData.yearsExperience;
+      }
+
+      await updateUserData(userData.id, additionalData);
+
+      // Add additional user data to return object
+      const completeUserData = {
+        ...userData,
+        ...additionalData
       };
 
       toast.success("Account created successfully!");
-      onSignupComplete(userData);
+      onSignupComplete(completeUserData);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create account");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

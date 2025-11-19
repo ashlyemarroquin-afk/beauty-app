@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./lib/firebase";
+import { getUserData, logOut as firebaseLogout } from "./lib/firebaseAuth";
 import {
   Home,
   Search,
@@ -44,6 +47,28 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [savedItems, setSavedItems] = useState<string[]>([]);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Listen to Firebase auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userData = await getUserData(firebaseUser.uid);
+          if (userData) {
+            setCurrentUser(userData as User);
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleAuthComplete = (user: User) => {
     setCurrentUser(user);
@@ -64,12 +89,17 @@ export default function App() {
     });
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setActiveTab("home");
-    setSavedItems([]);
-    setShowAuthPrompt(false);
-    toast.success("Logged out successfully");
+  const handleLogout = async () => {
+    try {
+      await firebaseLogout();
+      setCurrentUser(null);
+      setActiveTab("home");
+      setSavedItems([]);
+      setShowAuthPrompt(false);
+      toast.success("Logged out successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to log out");
+    }
   };
 
   const requireAuth = (action: string): boolean => {
@@ -277,6 +307,21 @@ export default function App() {
         );
     }
   };
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <ThemeProvider>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+        <Toaster />
+      </ThemeProvider>
+    );
+  }
 
   // Show auth flow if no user is logged in
   if (!currentUser) {

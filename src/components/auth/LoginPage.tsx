@@ -5,6 +5,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { toast } from "sonner@2.0.3";
+import { signIn, resetPassword } from "../../lib/firebaseAuth";
 
 interface LoginPageProps {
   onLogin: (user: any) => void;
@@ -19,48 +20,37 @@ export function LoginPage({ onLogin, onBack, onSignup }: LoginPageProps) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Mock users for demo
-  const mockUsers = [
-    {
-      id: "1",
-      email: "sarah@example.com",
-      name: "Sarah Chen",
-      type: "provider" as const,
-      isOnboarded: true
-    },
-    {
-      id: "2", 
-      email: "john@example.com",
-      name: "John Smith",
-      type: "consumer" as const,
-      isOnboarded: true
-    },
-    {
-      id: "3",
-      email: "newuser@example.com", 
-      name: "New User",
-      type: "consumer" as const,
-      isOnboarded: false
-    }
-  ];
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const user = mockUsers.find(u => u.email === formData.email);
-      
-      if (user && formData.password === "password") {
-        toast.success("Welcome back!");
-        onLogin(user);
-      } else {
-        toast.error("Invalid email or password");
-      }
+    try {
+      const userData = await signIn(formData.email, formData.password);
+      toast.success("Welcome back!");
+      onLogin(userData);
+    } catch (error: any) {
+      toast.error(error.message || "Invalid email or password");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      toast.error("Please enter your email address first");
+      return;
+    }
+
+    try {
+      await resetPassword(formData.email);
+      setResetEmailSent(true);
+      toast.success("Password reset email sent! Check your inbox.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send password reset email");
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,13 +60,6 @@ export function LoginPage({ onLogin, onBack, onSignup }: LoginPageProps) {
     }));
   };
 
-  const handleDemoLogin = (userType: "consumer" | "provider") => {
-    const user = mockUsers.find(u => u.type === userType && u.isOnboarded);
-    if (user) {
-      setFormData({ email: user.email, password: "password" });
-      toast.success(`Demo ${userType} login ready!`);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -142,37 +125,22 @@ export function LoginPage({ onLogin, onBack, onSignup }: LoginPageProps) {
               </Button>
             </form>
 
-            {/* Demo Logins */}
-            <div className="mt-6 pt-4 border-t">
-              <p className="text-sm text-muted-foreground text-center mb-3">Quick demo access:</p>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => handleDemoLogin("consumer")}
-                >
-                  Demo Consumer
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => handleDemoLogin("provider")}
-                >
-                  Demo Provider
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Email will be pre-filled, password is "password"
-              </p>
-            </div>
-
             {/* Forgot Password */}
             <div className="mt-4 text-center">
-              <Button variant="link" className="text-sm">
-                Forgot your password?
-              </Button>
+              {!resetEmailSent ? (
+                <Button 
+                  variant="link" 
+                  className="text-sm"
+                  onClick={handleForgotPassword}
+                  disabled={!formData.email}
+                >
+                  Forgot your password?
+                </Button>
+              ) : (
+                <p className="text-sm text-green-600 dark:text-green-400">
+                  Password reset email sent! Check your inbox.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

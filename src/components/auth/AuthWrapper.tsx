@@ -4,6 +4,7 @@ import { LoginPage } from "./LoginPage";
 import { SignupPage } from "./SignupPage";
 import { ConsumerOnboarding } from "./ConsumerOnboarding";
 import { ProviderOnboarding } from "./ProviderOnboarding";
+import { updateUserData } from "../../lib/firebaseAuth";
 
 type AuthFlow = "welcome" | "login" | "signup" | "consumer-onboarding" | "provider-onboarding";
 type UserType = "consumer" | "provider";
@@ -40,14 +41,31 @@ export function AuthWrapper({ onAuthComplete, onGuestMode }: AuthWrapperProps) {
     }
   };
 
-  const handleOnboardingComplete = (onboardingData: any) => {
-    if (pendingUser) {
-      const completeUser: User = {
-        ...pendingUser,
-        isOnboarded: true,
-        ...onboardingData
-      } as User;
-      onAuthComplete(completeUser);
+  const handleOnboardingComplete = async (onboardingData: any) => {
+    if (pendingUser && pendingUser.id) {
+      try {
+        // Update user data in Firestore with onboarding information
+        await updateUserData(pendingUser.id, {
+          isOnboarded: true,
+          ...onboardingData
+        });
+
+        const completeUser: User = {
+          ...pendingUser,
+          isOnboarded: true,
+          ...onboardingData
+        } as User;
+        onAuthComplete(completeUser);
+      } catch (error: any) {
+        console.error("Error updating user data:", error);
+        // Still complete onboarding even if Firestore update fails
+        const completeUser: User = {
+          ...pendingUser,
+          isOnboarded: true,
+          ...onboardingData
+        } as User;
+        onAuthComplete(completeUser);
+      }
     }
   };
 
