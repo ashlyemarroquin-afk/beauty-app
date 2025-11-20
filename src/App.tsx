@@ -40,6 +40,7 @@ interface User {
   name: string;
   type: "consumer" | "provider" | "guest";
   isOnboarded: boolean;
+  followed?: string[];
 }
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
   const [savedItems, setSavedItems] = useState<string[]>([]);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshFollowed, setRefreshFollowed] = useState(0);
 
   // Listen to Firebase auth state changes
   useEffect(() => {
@@ -69,6 +71,26 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // Refresh user data when followed list changes
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (auth.currentUser) {
+        try {
+          const userData = await getUserData(auth.currentUser.uid);
+          if (userData) {
+            setCurrentUser(userData as User);
+          }
+        } catch (error) {
+          console.error("Error refreshing user data:", error);
+        }
+      }
+    };
+
+    if (refreshFollowed > 0) {
+      refreshUserData();
+    }
+  }, [refreshFollowed]);
 
   const handleAuthComplete = (user: User) => {
     setCurrentUser(user);
@@ -137,6 +159,9 @@ export default function App() {
             onToggleSave={handleToggleSave}
             isGuest={currentUser?.type === "guest"}
             onRequireAuth={() => requireAuth("save items")}
+            currentUserId={currentUser?.id}
+            followedProviders={currentUser?.followed || []}
+            onFollowChange={() => setRefreshFollowed(prev => prev + 1)}
           />
         );
       case "explore":
@@ -146,6 +171,9 @@ export default function App() {
             onToggleSave={handleToggleSave}
             isGuest={currentUser?.type === "guest"}
             onRequireAuth={() => requireAuth("save items")}
+            currentUserId={currentUser?.id}
+            followedProviders={currentUser?.followed || []}
+            onFollowChange={() => setRefreshFollowed(prev => prev + 1)}
           />
         );
       case "saved":

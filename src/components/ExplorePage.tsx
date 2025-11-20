@@ -1,25 +1,102 @@
-import { useState } from "react";
-import { BookMarked, Search, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BookMarked, Search, X, Loader2, UserPlus, UserCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { mockWorkPhotos, categories } from "./mockData";
+import { type WorkPhoto, categories } from "./mockData";
 import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
+import { getExplorePosts } from "../lib/firestoreService";
+import { toast } from "sonner@2.0.3";
+import { followProvider, unfollowProvider } from "../lib/firebaseAuth";
+import { auth } from "../lib/firebase";
 
 interface ExplorePageProps {
   savedItems: string[];
   onToggleSave: (photoId: string) => void;
   isGuest?: boolean;
   onRequireAuth?: () => void;
+  currentUserId?: string;
+  followedProviders?: string[];
+  onFollowChange?: () => void;
 }
 
-export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequireAuth }: ExplorePageProps) {
+export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequireAuth, currentUserId, followedProviders = [], onFollowChange }: ExplorePageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [workPhotos, setWorkPhotos] = useState<WorkPhoto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [followed, setFollowed] = useState<string[]>(followedProviders);
+
+  // Update followed list when prop changes
+  useEffect(() => {
+    setFollowed(followedProviders);
+  }, [followedProviders]);
+
+  // Handle follow/unfollow
+  const handleFollowToggle = async (providerName: string, isFollowing: boolean) => {
+    if (isGuest || !currentUserId) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    try {
+      if (isFollowing) {
+        await unfollowProvider(currentUserId, providerName);
+        setFollowed(prev => prev.filter(name => name !== providerName));
+        toast.success(`Unfollowed ${providerName}`);
+      } else {
+        await followProvider(currentUserId, providerName);
+        setFollowed(prev => [...prev, providerName]);
+        toast.success(`Following ${providerName}`);
+      }
+      
+      if (onFollowChange) {
+        onFollowChange();
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update follow status");
+    }
+  };
+
+  // Fetch posts from Firestore
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log("ExplorePage: Starting to fetch posts...");
+        const posts = await getExplorePosts();
+        console.log("ExplorePage: Received posts:", posts);
+        console.log("ExplorePage: Number of posts:", posts.length);
+        setWorkPhotos(posts);
+        
+        if (posts.length === 0) {
+          console.warn("ExplorePage: No posts returned from Firestore");
+          setError("No posts found in the explore collection. Please check your Firestore data.");
+        }
+      } catch (err: any) {
+        console.error("ExplorePage: Error fetching posts:", err);
+        console.error("ExplorePage: Error details:", {
+          message: err.message,
+          code: err.code,
+          stack: err.stack
+        });
+        setError(err.message || "Failed to load posts");
+        toast.error(`Failed to load posts: ${err.message || "Unknown error"}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   // Filter photos based on search and category
-  const filteredPhotos = mockWorkPhotos.filter((photo) => {
+  const filteredPhotos = workPhotos.filter((photo) => {
     const matchesSearch = 
       searchQuery === "" ||
       photo.professional.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -80,11 +157,34 @@ export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequi
         </div>
       </div>
 
-      {/* Photo Masonry Grid */}
-      {filteredPhotos.length === 0 ? (
+      {/* Loading state */}
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">Loading posts...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="text-center py-16">
+          <p className="text-destructive">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">Retry</Button>
+        </div>
+      ) : workPhotos.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-muted-foreground">No posts found in the explore collection.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {error || "Please check your Firestore database and ensure the 'explore' collection has documents."}
+          </p>
+          <Button onClick={() => window.location.reload()} className="mt-4">Refresh</Button>
+        </div>
+      ) : filteredPhotos.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-muted-foreground">No photos found matching your criteria.</p>
           <p className="text-sm text-muted-foreground mt-2">Try a different search or category.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Showing {workPhotos.length} total posts, but none match your filters.
+          </p>
         </div>
       ) : (
         <ResponsiveMasonry
@@ -97,6 +197,9 @@ export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequi
                 photo={photo}
                 isSaved={savedItems.includes(photo.id)}
                 onToggleSave={onToggleSave}
+                isFollowing={followed.includes(photo.professional.name)}
+                onFollowToggle={() => handleFollowToggle(photo.professional.name, followed.includes(photo.professional.name))}
+                isGuest={isGuest}
               />
             ))}
           </Masonry>
@@ -107,12 +210,15 @@ export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequi
 }
 
 interface PhotoCardProps {
-  photo: typeof mockWorkPhotos[0];
+  photo: WorkPhoto;
   isSaved: boolean;
   onToggleSave: (photoId: string) => void;
+  isFollowing?: boolean;
+  onFollowToggle?: () => void;
+  isGuest?: boolean;
 }
 
-function PhotoCard({ photo, isSaved, onToggleSave }: PhotoCardProps) {
+function PhotoCard({ photo, isSaved, onToggleSave, isFollowing = false, onFollowToggle, isGuest = false }: PhotoCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -166,24 +272,44 @@ function PhotoCard({ photo, isSaved, onToggleSave }: PhotoCardProps) {
         </div>
       </div>
 
-      {/* Save Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className={`absolute top-3 left-3 w-10 h-10 rounded-full transition-all duration-300 ${
-          isHovered || isSaved ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
-        } bg-background/95 hover:bg-background shadow-lg backdrop-blur-sm`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleSave(photo.id);
-        }}
-      >
-        <BookMarked
-          className={`w-5 h-5 transition-all ${
-            isSaved ? 'fill-red-500 text-red-500 scale-110' : ''
-          }`}
-        />
-      </Button>
+      {/* Save and Follow Buttons */}
+      <div className={`absolute top-3 left-3 flex gap-2 transition-all duration-300 ${
+        isHovered || isSaved ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+      }`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-10 h-10 rounded-full bg-background/95 hover:bg-background shadow-lg backdrop-blur-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSave(photo.id);
+          }}
+        >
+          <BookMarked
+            className={`w-5 h-5 transition-all ${
+              isSaved ? 'fill-red-500 text-red-500 scale-110' : ''
+            }`}
+          />
+        </Button>
+        {/* Follow Button */}
+        {!isGuest && onFollowToggle && (
+          <Button
+            variant={isFollowing ? "default" : "ghost"}
+            size="icon"
+            className="w-10 h-10 rounded-full bg-background/95 hover:bg-background shadow-lg backdrop-blur-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFollowToggle();
+            }}
+          >
+            {isFollowing ? (
+              <UserCheck className="w-5 h-5" />
+            ) : (
+              <UserPlus className="w-5 h-5" />
+            )}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

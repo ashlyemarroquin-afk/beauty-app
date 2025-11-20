@@ -1,24 +1,101 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Masonry from "react-responsive-masonry";
-import { BookMarked, MessageCircle, Share2, X, MapPin, Star, Sparkles } from "lucide-react";
+import { BookMarked, MessageCircle, Share2, X, MapPin, Star, Sparkles, Loader2, UserPlus, UserCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { BusinessProfilePage } from "./BusinessProfilePage";
-import { mockWorkPhotos, type WorkPhoto } from "./mockData";
+import { type WorkPhoto } from "./mockData";
 import { toast } from "sonner@2.0.3";
+import { getForYouPosts } from "../lib/firestoreService";
+import { followProvider, unfollowProvider, getUserData } from "../lib/firebaseAuth";
+import { auth } from "../lib/firebase";
 
 interface ForYouPageProps {
   savedItems?: string[];
   onToggleSave?: (pinId: string) => void;
   isGuest?: boolean;
   onRequireAuth?: () => void;
+  currentUserId?: string;
+  followedProviders?: string[];
+  onFollowChange?: () => void;
 }
 
-export function ForYouPage({ savedItems = [], onToggleSave, isGuest = false, onRequireAuth }: ForYouPageProps) {
+export function ForYouPage({ 
+  savedItems = [], 
+  onToggleSave, 
+  isGuest = false, 
+  onRequireAuth,
+  currentUserId,
+  followedProviders = [],
+  onFollowChange
+}: ForYouPageProps) {
   const [localSavedItems, setLocalSavedItems] = useState<string[]>(savedItems);
   const [selectedPin, setSelectedPin] = useState<WorkPhoto | null>(null);
   const [viewingBusiness, setViewingBusiness] = useState<string | null>(null);
+  const [workPhotos, setWorkPhotos] = useState<WorkPhoto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [followed, setFollowed] = useState<string[]>(followedProviders);
+
+  // Update followed list when prop changes
+  useEffect(() => {
+    setFollowed(followedProviders);
+  }, [followedProviders]);
+
+  // Fetch posts from Firestore (only from followed providers)
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        if (isGuest || followed.length === 0) {
+          // If guest or no followed providers, show empty state
+          setWorkPhotos([]);
+        } else {
+          const posts = await getForYouPosts(followed);
+          setWorkPhotos(posts);
+        }
+      } catch (err: any) {
+        console.error("Error fetching posts:", err);
+        setError(err.message || "Failed to load posts");
+        toast.error("Failed to load posts. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [followed, isGuest]);
+
+  // Handle follow/unfollow
+  const handleFollowToggle = async (providerName: string, isFollowing: boolean) => {
+    if (isGuest || !currentUserId) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    try {
+      if (isFollowing) {
+        await unfollowProvider(currentUserId, providerName);
+        setFollowed(prev => prev.filter(name => name !== providerName));
+        toast.success(`Unfollowed ${providerName}`);
+      } else {
+        await followProvider(currentUserId, providerName);
+        setFollowed(prev => [...prev, providerName]);
+        toast.success(`Following ${providerName}`);
+      }
+      
+      if (onFollowChange) {
+        onFollowChange();
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update follow status");
+    }
+  };
 
   const handleToggleSave = (pinId: string) => {
     if (onToggleSave) {
@@ -50,6 +127,61 @@ export function ForYouPage({ savedItems = [], onToggleSave, isGuest = false, onR
     );
   }
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading posts...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <p className="text-destructive">{error}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (workPhotos.length === 0 && !isLoading) {
+    if (isGuest || followed.length === 0) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4 max-w-md">
+            <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
+            <h2 className="text-xl font-semibold">Start Following Providers</h2>
+            <p className="text-muted-foreground">
+              {isGuest 
+                ? "Sign in to follow providers and see their posts in your feed!"
+                : "Follow providers in the Explore page to see their posts here."}
+            </p>
+            {isGuest && onRequireAuth && (
+              <Button onClick={onRequireAuth}>Sign In</Button>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
+          <h2 className="text-xl font-semibold">No posts yet</h2>
+          <p className="text-muted-foreground">The providers you follow haven't posted anything yet.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="space-y-4">
@@ -60,43 +192,61 @@ export function ForYouPage({ savedItems = [], onToggleSave, isGuest = false, onR
             <h1>For You</h1>
           </div>
           <Badge variant="secondary">
-            {mockWorkPhotos.length} pins
+            {workPhotos.length} pins
           </Badge>
         </div>
 
         {/* Masonry Grid */}
         <Masonry columnsCount={2} gutter="12px" className="md:hidden">
-          {mockWorkPhotos.map((pin) => (
+          {workPhotos.map((pin) => (
             <PinCard
               key={pin.id}
               pin={pin}
               isSaved={allSavedItems.includes(pin.id)}
               onToggleSave={handleToggleSave}
               onClick={() => setSelectedPin(pin)}
+              isFollowing={followed.includes(pin.professional.name)}
+              onFollowToggle={(e) => {
+                e.stopPropagation();
+                handleFollowToggle(pin.professional.name, followed.includes(pin.professional.name));
+              }}
+              isGuest={isGuest}
             />
           ))}
         </Masonry>
 
         <Masonry columnsCount={3} gutter="16px" className="hidden md:block lg:hidden">
-          {mockWorkPhotos.map((pin) => (
+          {workPhotos.map((pin) => (
             <PinCard
               key={pin.id}
               pin={pin}
               isSaved={allSavedItems.includes(pin.id)}
               onToggleSave={handleToggleSave}
               onClick={() => setSelectedPin(pin)}
+              isFollowing={followed.includes(pin.professional.name)}
+              onFollowToggle={(e) => {
+                e.stopPropagation();
+                handleFollowToggle(pin.professional.name, followed.includes(pin.professional.name));
+              }}
+              isGuest={isGuest}
             />
           ))}
         </Masonry>
 
         <Masonry columnsCount={4} gutter="16px" className="hidden lg:block">
-          {mockWorkPhotos.map((pin) => (
+          {workPhotos.map((pin) => (
             <PinCard
               key={pin.id}
               pin={pin}
               isSaved={allSavedItems.includes(pin.id)}
               onToggleSave={handleToggleSave}
               onClick={() => setSelectedPin(pin)}
+              isFollowing={followed.includes(pin.professional.name)}
+              onFollowToggle={(e) => {
+                e.stopPropagation();
+                handleFollowToggle(pin.professional.name, followed.includes(pin.professional.name));
+              }}
+              isGuest={isGuest}
             />
           ))}
         </Masonry>
@@ -113,6 +263,10 @@ export function ForYouPage({ savedItems = [], onToggleSave, isGuest = false, onR
             setViewingBusiness(selectedPin.professional.id);
             setSelectedPin(null);
           }}
+          isFollowing={followed.includes(selectedPin.professional.name)}
+          onFollowToggle={() => handleFollowToggle(selectedPin.professional.name, followed.includes(selectedPin.professional.name))}
+          isGuest={isGuest}
+          currentUserId={currentUserId}
         />
       )}
     </>
@@ -124,9 +278,12 @@ interface PinCardProps {
   isSaved: boolean;
   onToggleSave: (pinId: string) => void;
   onClick: () => void;
+  isFollowing?: boolean;
+  onFollowToggle?: (e: React.MouseEvent) => void;
+  isGuest?: boolean;
 }
 
-function PinCard({ pin, isSaved, onToggleSave, onClick }: PinCardProps) {
+function PinCard({ pin, isSaved, onToggleSave, onClick, isFollowing = false, onFollowToggle, isGuest = false }: PinCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -155,7 +312,7 @@ function PinCard({ pin, isSaved, onToggleSave, onClick }: PinCardProps) {
           }}
         >
           {/* Save Button - Top Right */}
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-3 flex gap-2">
             <Button
               variant="ghost"
               size="icon"
@@ -171,6 +328,21 @@ function PinCard({ pin, isSaved, onToggleSave, onClick }: PinCardProps) {
                 }`}
               />
             </Button>
+            {/* Follow Button */}
+            {!isGuest && onFollowToggle && (
+              <Button
+                variant={isFollowing ? "default" : "ghost"}
+                size="icon"
+                className="w-10 h-10 rounded-full bg-background hover:bg-background/90 shadow-lg"
+                onClick={onFollowToggle}
+              >
+                {isFollowing ? (
+                  <UserCheck className="w-5 h-5" />
+                ) : (
+                  <UserPlus className="w-5 h-5" />
+                )}
+              </Button>
+            )}
           </div>
 
           {/* Category Badge - Top Left */}
@@ -198,6 +370,11 @@ function PinCard({ pin, isSaved, onToggleSave, onClick }: PinCardProps) {
                   </p>
                 )}
               </div>
+              {isFollowing && (
+                <Badge variant="secondary" className="text-xs">
+                  Following
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -212,9 +389,13 @@ interface PinDetailModalProps {
   onToggleSave: (pinId: string) => void;
   onClose: () => void;
   onViewProfile: () => void;
+  isFollowing?: boolean;
+  onFollowToggle?: () => void;
+  isGuest?: boolean;
+  currentUserId?: string;
 }
 
-function PinDetailModal({ pin, isSaved, onToggleSave, onClose, onViewProfile }: PinDetailModalProps) {
+function PinDetailModal({ pin, isSaved, onToggleSave, onClose, onViewProfile, isFollowing = false, onFollowToggle, isGuest = false, currentUserId }: PinDetailModalProps) {
   return (
     <div 
       className="fixed inset-0 z-50 bg-black/80 dark:bg-black/90 flex items-center justify-center p-4"
@@ -300,6 +481,29 @@ function PinDetailModal({ pin, isSaved, onToggleSave, onClose, onViewProfile }: 
                 </div>
               )}
             </div>
+            {/* Follow Button in Modal */}
+            {!isGuest && currentUserId && onFollowToggle && (
+              <Button
+                variant={isFollowing ? "default" : "outline"}
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFollowToggle();
+                }}
+              >
+                {isFollowing ? (
+                  <>
+                    <UserCheck className="w-4 h-4 mr-2" />
+                    Following
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Follow
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           {/* Description */}

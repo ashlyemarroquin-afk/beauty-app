@@ -16,6 +16,7 @@ export interface UserData {
   name: string;
   type: "consumer" | "provider";
   isOnboarded: boolean;
+  followed?: string[]; // Array of provider names the user follows
   createdAt?: any;
   updatedAt?: any;
 }
@@ -49,6 +50,7 @@ export async function signUp(
       name,
       type: userType,
       isOnboarded: false,
+      followed: [], // Initialize empty followed array
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -158,5 +160,55 @@ export function firebaseUserToUserData(
     email: firebaseUser.email || "",
     name: firebaseUser.displayName || "",
   };
+}
+
+/**
+ * Follow a provider
+ */
+export async function followProvider(
+  userId: string,
+  providerName: string
+): Promise<void> {
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId));
+    if (!userDoc.exists()) {
+      throw new Error("User not found");
+    }
+
+    const userData = userDoc.data() as UserData;
+    const followed = userData.followed || [];
+    
+    if (!followed.includes(providerName)) {
+      await updateUserData(userId, {
+        followed: [...followed, providerName],
+      });
+    }
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to follow provider");
+  }
+}
+
+/**
+ * Unfollow a provider
+ */
+export async function unfollowProvider(
+  userId: string,
+  providerName: string
+): Promise<void> {
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId));
+    if (!userDoc.exists()) {
+      throw new Error("User not found");
+    }
+
+    const userData = userDoc.data() as UserData;
+    const followed = userData.followed || [];
+    
+    await updateUserData(userId, {
+      followed: followed.filter((name) => name !== providerName),
+    });
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to unfollow provider");
+  }
 }
 
