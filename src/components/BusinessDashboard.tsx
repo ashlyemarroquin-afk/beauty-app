@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BarChart3, Users, Calendar, DollarSign, TrendingUp, Star, Gift, Megaphone, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BarChart3, Users, Calendar, DollarSign, TrendingUp, Star, Gift, Megaphone, Eye, Briefcase, Plus, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -10,6 +10,10 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { CreateServiceDialog } from "./CreateServiceDialog";
+import { getServicesByIds, ServiceDocument } from "../lib/firestoreService";
+import { auth } from "../lib/firebase";
+import { getUserData } from "../lib/firebaseAuth";
 
 interface BusinessStats {
   totalBookings: number;
@@ -39,6 +43,10 @@ export function BusinessDashboard() {
     profileViews: 1240,
     loyaltyMembers: 89
   });
+
+  const [showCreateServiceDialog, setShowCreateServiceDialog] = useState(false);
+  const [services, setServices] = useState<ServiceDocument[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
 
   const [loyaltyPrograms, setLoyaltyPrograms] = useState<LoyaltyProgram[]>([
     {
@@ -78,8 +86,46 @@ export function BusinessDashboard() {
     );
   };
 
+  // Fetch user's services
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!auth.currentUser) return;
+      
+      try {
+        setLoadingServices(true);
+        const userData = await getUserData(auth.currentUser.uid);
+        
+        if (userData && userData.services && Array.isArray(userData.services)) {
+          const fetchedServices = await getServicesByIds(userData.services);
+          setServices(fetchedServices);
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
+  const handleServiceCreated = async () => {
+    // Refresh services list
+    if (!auth.currentUser) return;
+    
+    try {
+      const userData = await getUserData(auth.currentUser.uid);
+      if (userData && userData.services && Array.isArray(userData.services)) {
+        const fetchedServices = await getServicesByIds(userData.services);
+        setServices(fetchedServices);
+      }
+    } catch (error) {
+      console.error("Error refreshing services:", error);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-full">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2">
           <BarChart3 className="w-6 h-6" />
@@ -141,12 +187,72 @@ export function BusinessDashboard() {
         </Card>
       </div>
 
-      <Tabs defaultValue="loyalty" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="services" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="services">Services</TabsTrigger>
           <TabsTrigger value="loyalty">Loyalty Programs</TabsTrigger>
           <TabsTrigger value="promotions">Promotions</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="services" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Your Services
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingServices ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">Loading services...</p>
+                </div>
+              ) : services.length === 0 ? (
+                <div className="text-center py-8">
+                  <Briefcase className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-4">
+                    You haven't created any services yet. Start by adding your first service!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {services.map((service, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{service.title}</h4>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="w-4 h-4" />
+                              ${service.price.toFixed(2)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {service.time} min
+                            </span>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <Button 
+                className="w-full" 
+                onClick={() => setShowCreateServiceDialog(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create New Service
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="loyalty" className="space-y-4">
           <Card>
@@ -356,6 +462,16 @@ export function BusinessDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Create Service Dialog */}
+      {auth.currentUser && (
+        <CreateServiceDialog
+          open={showCreateServiceDialog}
+          onOpenChange={setShowCreateServiceDialog}
+          userId={auth.currentUser.uid}
+          onServiceCreated={handleServiceCreated}
+        />
+      )}
     </div>
   );
 }

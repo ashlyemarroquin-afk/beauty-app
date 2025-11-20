@@ -51,7 +51,7 @@ export function SavedItemsPage({ savedItems, onRemove }: SavedItemsPageProps) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 min-h-full">
       {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">

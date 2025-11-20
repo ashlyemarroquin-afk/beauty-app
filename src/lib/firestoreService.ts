@@ -275,3 +275,357 @@ export async function addPostToUser(userId: string, postId: string): Promise<voi
   }
 }
 
+/**
+ * Service document interface
+ */
+export interface ServiceDocument {
+  id?: string; // Document ID
+  title: string;
+  price: number;
+  time: number; // duration in minutes
+  provider_id: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+/**
+ * Create a new service in the services collection
+ */
+export async function createService(
+  title: string,
+  price: number,
+  time: number,
+  userId: string
+): Promise<string> {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("User must be authenticated to create a service");
+    }
+
+    const servicesRef = collection(db, "services");
+    const newService: ServiceDocument = {
+      title,
+      price,
+      time,
+      provider_id: userId,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    const docRef = await addDoc(servicesRef, newService);
+    return docRef.id;
+  } catch (error: any) {
+    console.error("Error creating service:", error);
+    throw new Error(error.message || "Failed to create service");
+  }
+}
+
+/**
+ * Add a service ID to the user's services array
+ */
+export async function addServiceToUser(userId: string, serviceId: string): Promise<void> {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+      services: arrayUnion(serviceId),
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error: any) {
+    console.error("Error adding service to user:", error);
+    throw new Error(error.message || "Failed to add service to user");
+  }
+}
+
+/**
+ * Fetch services by IDs
+ */
+export async function getServicesByIds(serviceIds: string[]): Promise<ServiceDocument[]> {
+  try {
+    if (serviceIds.length === 0) return [];
+
+    const services: ServiceDocument[] = [];
+    
+    for (const serviceId of serviceIds) {
+      const serviceRef = doc(db, "services", serviceId);
+      const serviceSnap = await getDoc(serviceRef);
+      
+      if (serviceSnap.exists()) {
+        services.push({ 
+          id: serviceSnap.id, 
+          ...serviceSnap.data() as ServiceDocument 
+        });
+      }
+    }
+    
+    return services;
+  } catch (error: any) {
+    console.error("Error fetching services:", error);
+    throw new Error(error.message || "Failed to fetch services");
+  }
+}
+
+/**
+ * Booking document interface
+ */
+export interface BookingDocument {
+  time: Timestamp;
+  service_id: string;
+  user_id: string;
+  provider_id: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+/**
+ * Create a new booking in the bookings collection
+ */
+export async function createBooking(
+  serviceId: string,
+  userId: string,
+  providerId: string,
+  bookingTime: Date
+): Promise<string> {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("User must be authenticated to create a booking");
+    }
+
+    const bookingsRef = collection(db, "bookings");
+    const newBooking: BookingDocument = {
+      time: Timestamp.fromDate(bookingTime),
+      service_id: serviceId,
+      user_id: userId,
+      provider_id: providerId,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    const docRef = await addDoc(bookingsRef, newBooking);
+    return docRef.id;
+  } catch (error: any) {
+    console.error("Error creating booking:", error);
+    throw new Error(error.message || "Failed to create booking");
+  }
+}
+
+/**
+ * Add a booking ID to the user's bookings array
+ */
+export async function addBookingToUser(userId: string, bookingId: string): Promise<void> {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+      bookings: arrayUnion(bookingId),
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error: any) {
+    console.error("Error adding booking to user:", error);
+    throw new Error(error.message || "Failed to add booking to user");
+  }
+}
+
+/**
+ * Fetch bookings by user ID
+ */
+export async function getBookingsByUserId(userId: string): Promise<(BookingDocument & { id: string })[]> {
+  try {
+    const bookingsRef = collection(db, "bookings");
+    const q = query(bookingsRef, orderBy("time", "desc"));
+    const querySnapshot = await getDocs(q);
+    
+    const bookings: (BookingDocument & { id: string })[] = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data() as BookingDocument;
+      if (data.user_id === userId) {
+        bookings.push({ id: doc.id, ...data });
+      }
+    });
+    
+    return bookings;
+  } catch (error: any) {
+    console.error("Error fetching bookings:", error);
+    throw new Error(error.message || "Failed to fetch bookings");
+  }
+}
+
+/**
+ * Fetch bookings by IDs
+ */
+export async function getBookingsByIds(bookingIds: string[]): Promise<(BookingDocument & { id: string })[]> {
+  try {
+    if (bookingIds.length === 0) return [];
+
+    const bookings: (BookingDocument & { id: string })[] = [];
+    
+    for (const bookingId of bookingIds) {
+      const bookingRef = doc(db, "bookings", bookingId);
+      const bookingSnap = await getDoc(bookingRef);
+      
+      if (bookingSnap.exists()) {
+        bookings.push({ id: bookingSnap.id, ...bookingSnap.data() as BookingDocument });
+      }
+    }
+    
+    // Sort by time (most recent first)
+    bookings.sort((a, b) => b.time.toMillis() - a.time.toMillis());
+    
+    return bookings;
+  } catch (error: any) {
+    console.error("Error fetching bookings by IDs:", error);
+    throw new Error(error.message || "Failed to fetch bookings");
+  }
+}
+
+/**
+ * Message document interface
+ */
+export interface MessageDocument {
+  consumer_id: string;
+  provider_id: string;
+  chat: ChatMessage[];
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+export interface ChatMessage {
+  content: string;
+  user_type: "consumer" | "provider";
+  timestamp?: Timestamp;
+}
+
+/**
+ * Create a new message conversation between consumer and provider
+ */
+export async function createMessageConversation(
+  consumerId: string,
+  providerId: string
+): Promise<string> {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("User must be authenticated to start a conversation");
+    }
+
+    // Check if conversation already exists
+    const existingConversation = await findExistingConversation(consumerId, providerId);
+    if (existingConversation) {
+      return existingConversation;
+    }
+
+    // Create new conversation
+    const messagesRef = collection(db, "messages");
+    const newConversation: MessageDocument = {
+      consumer_id: consumerId,
+      provider_id: providerId,
+      chat: [],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    const docRef = await addDoc(messagesRef, newConversation);
+    const conversationId = docRef.id;
+
+    // Add conversation ID to both users' messages arrays
+    await addMessageToUser(consumerId, conversationId);
+    await addMessageToUser(providerId, conversationId);
+
+    return conversationId;
+  } catch (error: any) {
+    console.error("Error creating conversation:", error);
+    throw new Error(error.message || "Failed to create conversation");
+  }
+}
+
+/**
+ * Find existing conversation between consumer and provider
+ */
+async function findExistingConversation(
+  consumerId: string,
+  providerId: string
+): Promise<string | null> {
+  try {
+    const messagesRef = collection(db, "messages");
+    const querySnapshot = await getDocs(messagesRef);
+    
+    for (const docSnap of querySnapshot.docs) {
+      const data = docSnap.data() as MessageDocument;
+      if (data.consumer_id === consumerId && data.provider_id === providerId) {
+        return docSnap.id;
+      }
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error("Error finding existing conversation:", error);
+    return null;
+  }
+}
+
+/**
+ * Add a message conversation ID to the user's messages array
+ */
+export async function addMessageToUser(userId: string, messageId: string): Promise<void> {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+      messages: arrayUnion(messageId),
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error: any) {
+    console.error("Error adding message to user:", error);
+    throw new Error(error.message || "Failed to add message to user");
+  }
+}
+
+/**
+ * Send a message in an existing conversation
+ */
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+  userType: "consumer" | "provider"
+): Promise<void> {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("User must be authenticated to send a message");
+    }
+
+    const conversationRef = doc(db, "messages", conversationId);
+    const newMessage: ChatMessage = {
+      content,
+      user_type: userType,
+      timestamp: Timestamp.now(),
+    };
+
+    await updateDoc(conversationRef, {
+      chat: arrayUnion(newMessage),
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error: any) {
+    console.error("Error sending message:", error);
+    throw new Error(error.message || "Failed to send message");
+  }
+}
+
+/**
+ * Fetch a conversation by ID
+ */
+export async function getConversationById(conversationId: string): Promise<MessageDocument | null> {
+  try {
+    const conversationRef = doc(db, "messages", conversationId);
+    const conversationSnap = await getDoc(conversationRef);
+    
+    if (conversationSnap.exists()) {
+      return conversationSnap.data() as MessageDocument;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error("Error fetching conversation:", error);
+    throw new Error(error.message || "Failed to fetch conversation");
+  }
+}
+

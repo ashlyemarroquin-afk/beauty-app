@@ -19,6 +19,7 @@ interface ForYouPageProps {
   currentUserId?: string;
   followedProviders?: string[];
   onFollowChange?: () => void;
+  onNavigateToMessages?: () => void;
 }
 
 export function ForYouPage({ 
@@ -28,7 +29,8 @@ export function ForYouPage({
   onRequireAuth,
   currentUserId,
   followedProviders = [],
-  onFollowChange
+  onFollowChange,
+  onNavigateToMessages
 }: ForYouPageProps) {
   const [localSavedItems, setLocalSavedItems] = useState<string[]>(savedItems);
   const [selectedPin, setSelectedPin] = useState<WorkPhoto | null>(null);
@@ -123,6 +125,7 @@ export function ForYouPage({
         onBack={() => setViewingBusiness(null)}
         isGuest={isGuest}
         onRequireAuth={onRequireAuth}
+        onNavigateToMessages={onNavigateToMessages}
       />
     );
   }
@@ -130,7 +133,7 @@ export function ForYouPage({
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-full">
         <div className="text-center space-y-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Loading posts...</p>
@@ -142,7 +145,7 @@ export function ForYouPage({
   // Error state
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-full">
         <div className="text-center space-y-4">
           <p className="text-destructive">{error}</p>
           <Button onClick={() => window.location.reload()}>Retry</Button>
@@ -155,7 +158,7 @@ export function ForYouPage({
   if (workPhotos.length === 0 && !isLoading) {
     if (isGuest || followed.length === 0) {
       return (
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-full">
           <div className="text-center space-y-4 max-w-md">
             <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
             <h2 className="text-xl font-semibold">Start Following Providers</h2>
@@ -172,7 +175,7 @@ export function ForYouPage({
       );
     }
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-full">
         <div className="text-center space-y-4">
           <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
           <h2 className="text-xl font-semibold">No posts yet</h2>
@@ -184,7 +187,7 @@ export function ForYouPage({
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-4 min-h-full">
         {/* Minimal Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -196,60 +199,66 @@ export function ForYouPage({
           </Badge>
         </div>
 
-        {/* Masonry Grid */}
-        <Masonry columnsCount={2} gutter="12px" className="md:hidden">
-          {workPhotos.map((pin) => (
-            <PinCard
-              key={pin.id}
-              pin={pin}
-              isSaved={allSavedItems.includes(pin.id)}
-              onToggleSave={handleToggleSave}
-              onClick={() => setSelectedPin(pin)}
-              isFollowing={followed.includes(pin.professional.id)}
-              onFollowToggle={(e) => {
-                e.stopPropagation();
-                handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
-              }}
-              isGuest={isGuest}
-            />
-          ))}
-        </Masonry>
+        {/* Masonry Grid - Single responsive grid */}
+        <div className="block md:hidden">
+          <Masonry columnsCount={2} gutter="12px">
+            {workPhotos.map((pin) => (
+              <PinCard
+                key={pin.id}
+                pin={pin}
+                isSaved={allSavedItems.includes(pin.id)}
+                onToggleSave={handleToggleSave}
+                onClick={() => setSelectedPin(pin)}
+                isFollowing={followed.includes(pin.professional.id)}
+                onFollowToggle={(e) => {
+                  e.stopPropagation();
+                  handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
+                }}
+                isGuest={isGuest}
+              />
+            ))}
+          </Masonry>
+        </div>
 
-        <Masonry columnsCount={3} gutter="16px" className="hidden md:block lg:hidden">
-          {workPhotos.map((pin) => (
-            <PinCard
-              key={pin.id}
-              pin={pin}
-              isSaved={allSavedItems.includes(pin.id)}
-              onToggleSave={handleToggleSave}
-              onClick={() => setSelectedPin(pin)}
-              isFollowing={followed.includes(pin.professional.id)}
-              onFollowToggle={(e) => {
-                e.stopPropagation();
-                handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
-              }}
-              isGuest={isGuest}
-            />
-          ))}
-        </Masonry>
+        <div className="hidden md:block lg:hidden">
+          <Masonry columnsCount={3} gutter="16px">
+            {workPhotos.map((pin) => (
+              <PinCard
+                key={pin.id}
+                pin={pin}
+                isSaved={allSavedItems.includes(pin.id)}
+                onToggleSave={handleToggleSave}
+                onClick={() => setSelectedPin(pin)}
+                isFollowing={followed.includes(pin.professional.id)}
+                onFollowToggle={(e) => {
+                  e.stopPropagation();
+                  handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
+                }}
+                isGuest={isGuest}
+              />
+            ))}
+          </Masonry>
+        </div>
 
-        <Masonry columnsCount={4} gutter="16px" className="hidden lg:block">
-          {workPhotos.map((pin) => (
-            <PinCard
-              key={pin.id}
-              pin={pin}
-              isSaved={allSavedItems.includes(pin.id)}
-              onToggleSave={handleToggleSave}
-              onClick={() => setSelectedPin(pin)}
-              isFollowing={followed.includes(pin.professional.id)}
-              onFollowToggle={(e) => {
-                e.stopPropagation();
-                handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
-              }}
-              isGuest={isGuest}
-            />
-          ))}
-        </Masonry>
+        <div className="hidden lg:block">
+          <Masonry columnsCount={4} gutter="16px">
+            {workPhotos.map((pin) => (
+              <PinCard
+                key={pin.id}
+                pin={pin}
+                isSaved={allSavedItems.includes(pin.id)}
+                onToggleSave={handleToggleSave}
+                onClick={() => setSelectedPin(pin)}
+                isFollowing={followed.includes(pin.professional.id)}
+                onFollowToggle={(e) => {
+                  e.stopPropagation();
+                  handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
+                }}
+                isGuest={isGuest}
+              />
+            ))}
+          </Masonry>
+        </div>
       </div>
 
       {/* Pin Detail Modal */}

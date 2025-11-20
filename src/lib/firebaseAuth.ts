@@ -18,6 +18,9 @@ export interface UserData {
   isOnboarded: boolean;
   followed?: string[]; // Array of provider_ids the user follows
   my_posts?: string[]; // Array of post document IDs that belong to this user
+  services?: string[]; // Array of service document IDs that belong to this provider
+  bookings?: string[]; // Array of booking document IDs for this user
+  messages?: string[]; // Array of message document IDs for conversations
   createdAt?: any;
   updatedAt?: any;
 }
@@ -52,6 +55,9 @@ export async function signUp(
       type: userType,
       isOnboarded: false,
       followed: [], // Initialize empty followed array
+      services: [], // Initialize empty services array for providers
+      bookings: [], // Initialize empty bookings array
+      messages: [], // Initialize empty messages array
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

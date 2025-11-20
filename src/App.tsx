@@ -17,7 +17,9 @@ import {
 import { ForYouPage } from "./components/ForYouPage";
 import { ExplorePage } from "./components/ExplorePage";
 import { SavedItemsPage } from "./components/SavedItemsPage";
+import { BookingsPage } from "./components/BookingsPage";
 import { BusinessDashboard } from "./components/BusinessDashboard";
+import { MessagesPage } from "./components/MessagesPage";
 import { AuthWrapper } from "./components/auth/AuthWrapper";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -165,6 +167,7 @@ export default function App() {
             currentUserId={currentUser?.id}
             followedProviders={currentUser?.followed || []}
             onFollowChange={() => setRefreshFollowed(prev => prev + 1)}
+            onNavigateToMessages={() => setActiveTab("messages")}
           />
         );
       case "explore":
@@ -177,20 +180,23 @@ export default function App() {
             currentUserId={currentUser?.id}
             followedProviders={currentUser?.followed || []}
             onFollowChange={() => setRefreshFollowed(prev => prev + 1)}
+            onNavigateToMessages={() => setActiveTab("messages")}
           />
         );
       case "saved":
         if (currentUser?.type === "guest") {
           return (
-            <div className="max-w-2xl mx-auto text-center py-12">
-              <BookMarked className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h2 className="mb-2">Create your shelf! ✨</h2>
-              <p className="text-muted-foreground mb-6">
-                Sign in to save your favorite work and keep track of talented artists.
-              </p>
-              <Button onClick={() => requireAuth("access saved items")}>
-                Get Started
-              </Button>
+            <div className="flex items-center justify-center min-h-full">
+              <div className="max-w-2xl text-center">
+                <BookMarked className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="mb-2">Create your shelf! ✨</h2>
+                <p className="text-muted-foreground mb-6">
+                  Sign in to save your favorite work and keep track of talented artists.
+                </p>
+                <Button onClick={() => requireAuth("access saved items")}>
+                  Get Started
+                </Button>
+              </div>
             </div>
           );
         }
@@ -203,129 +209,121 @@ export default function App() {
       case "bookings":
         if (currentUser?.type === "guest") {
           return (
-            <div className="max-w-2xl mx-auto text-center py-12">
-              <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h2 className="mb-2">Ready to book? 📅</h2>
-              <p className="text-muted-foreground mb-6">
-                Create an account to book appointments with amazing artists.
-              </p>
-              <Button onClick={() => requireAuth("access bookings")}>
-                Get Started
-              </Button>
+            <div className="flex items-center justify-center min-h-full">
+              <div className="max-w-2xl text-center">
+                <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="mb-2">Ready to book? 📅</h2>
+                <p className="text-muted-foreground mb-6">
+                  Create an account to book appointments with amazing artists.
+                </p>
+                <Button onClick={() => requireAuth("access bookings")}>
+                  Get Started
+                </Button>
+              </div>
             </div>
           );
         }
-        return (
-          <div className="max-w-2xl mx-auto text-center py-12">
-            <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="mb-2">Your Bookings</h2>
-            <p className="text-muted-foreground mb-6">
-              Book appointments and manage your schedule—all in one place!
-            </p>
-            <Button>Connect Calendar</Button>
-          </div>
-        );
+        return <BookingsPage />;
       case "messages":
         if (currentUser?.type === "guest") {
           return (
-            <div className="max-w-2xl mx-auto text-center py-12">
-              <MessageCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h2 className="mb-2">Let's chat! 💬</h2>
-              <p className="text-muted-foreground mb-6">
-                Sign in to message artists about services and appointments.
-              </p>
-              <Button onClick={() => requireAuth("send messages")}>
-                Get Started
-              </Button>
+            <div className="flex items-center justify-center min-h-full">
+              <div className="max-w-2xl text-center">
+                <MessageCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="mb-2">Let's chat! 💬</h2>
+                <p className="text-muted-foreground mb-6">
+                  Sign in to message artists about services and appointments.
+                </p>
+                <Button onClick={() => requireAuth("send messages")}>
+                  Get Started
+                </Button>
+              </div>
             </div>
           );
         }
-        return (
-          <div className="max-w-2xl mx-auto text-center py-12">
-            <MessageCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="mb-2">Messages</h2>
-            <p className="text-muted-foreground mb-6">
-              Chat with artists about services and book your next appointment!
-            </p>
-            <Button>Start Conversation</Button>
-          </div>
-        );
+        return <MessagesPage />;
       case "profile":
         if (currentUser?.type === "guest") {
           return (
-            <div className="max-w-2xl mx-auto text-center py-12">
-              <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h2 className="mb-2">Browsing as Guest 👋</h2>
-              <p className="text-muted-foreground mb-6">
-                Create an account to unlock bookings, messaging, and your personal shelf of favorites!
-              </p>
-              <div className="space-y-2">
-                <Button className="w-full max-w-xs" onClick={() => {
-                  setCurrentUser(null);
-                  setShowAuthPrompt(false);
-                }}>
-                  Create Account ✨
-                </Button>
-                <Button variant="outline" className="w-full max-w-xs" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Exit Guest Mode
-                </Button>
+            <div className="flex items-center justify-center min-h-full">
+              <div className="max-w-2xl text-center">
+                <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="mb-2">Browsing as Guest 👋</h2>
+                <p className="text-muted-foreground mb-6">
+                  Create an account to unlock bookings, messaging, and your personal shelf of favorites!
+                </p>
+                <div className="space-y-2">
+                  <Button className="w-full max-w-xs" onClick={() => {
+                    setCurrentUser(null);
+                    setShowAuthPrompt(false);
+                  }}>
+                    Create Account ✨
+                  </Button>
+                  <Button variant="outline" className="w-full max-w-xs" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Exit Guest Mode
+                  </Button>
+                </div>
               </div>
             </div>
           );
         }
         return (
-          <div className="max-w-2xl mx-auto text-center py-12">
-            <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="mb-2">Your Profile</h2>
-            <p className="text-muted-foreground mb-4">
-              Welcome back, {currentUser.name}!
-            </p>
-            <div className="bg-muted/30 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center">
-                <div className="text-left">
-                  <p className="font-medium">
-                    {currentUser.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {currentUser.email}
-                  </p>
-                  <Badge variant="outline" className="mt-1">
-                    {currentUser.type === "provider"
-                      ? "Professional"
-                      : "Client"}
-                  </Badge>
+          <div className="flex items-center justify-center min-h-full">
+            <div className="max-w-2xl text-center py-12">
+              <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <h2 className="mb-2">Your Profile</h2>
+              <p className="text-muted-foreground mb-4">
+                Welcome back, {currentUser.name}!
+              </p>
+              <div className="bg-muted/30 rounded-lg p-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <div className="text-left">
+                    <p className="font-medium">
+                      {currentUser.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentUser.email}
+                    </p>
+                    <Badge variant="outline" className="mt-1">
+                      {currentUser.type === "provider"
+                        ? "Professional"
+                        : "Client"}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex gap-2 justify-center flex-wrap">
-              <Button onClick={() => setShowCreatePostDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Post
-              </Button>
-              <Button onClick={() => setActiveTab("saved")}>
-                <BookMarked className="w-4 h-4 mr-2" />
-                My Shelf
-                {savedItems.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {savedItems.length}
-                  </Badge>
+              <div className="flex gap-2 justify-center flex-wrap">
+                {currentUser.type === "provider" && (
+                  <Button onClick={() => setShowCreatePostDialog(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Post
+                  </Button>
                 )}
-              </Button>
-              <Button variant="outline">Edit Profile</Button>
-              {currentUser.type === "provider" && (
-                <Button
-                  variant="outline"
-                  onClick={() => setActiveTab("business")}
-                >
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Business Dashboard
+                <Button onClick={() => setActiveTab("saved")}>
+                  <BookMarked className="w-4 h-4 mr-2" />
+                  My Shelf
+                  {savedItems.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {savedItems.length}
+                    </Badge>
+                  )}
                 </Button>
-              )}
-              <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
+                <Button variant="outline">Edit Profile</Button>
+                {currentUser.type === "provider" && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setActiveTab("business")}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Business Dashboard
+                  </Button>
+                )}
+                <Button variant="outline" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
             </div>
           </div>
         );
@@ -338,6 +336,7 @@ export default function App() {
             onToggleSave={handleToggleSave}
             isGuest={currentUser?.type === "guest"}
             onRequireAuth={() => requireAuth("save items")}
+            onNavigateToMessages={() => setActiveTab("messages")}
           />
         );
     }
@@ -373,7 +372,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Auth Prompt Modal */}
         {showAuthPrompt && currentUser?.type === "guest" && (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -405,9 +404,10 @@ export default function App() {
         )}
 
         {/* Header */}
-        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
-          <div className="max-w-6xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
+        <header className="flex-shrink-0 bg-background/80 backdrop-blur-md border-b">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              {/* Logo Section */}
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <BookMarked className="w-5 h-5 text-primary-foreground" />
@@ -421,6 +421,8 @@ export default function App() {
                   )}
                 </div>
               </div>
+
+              {/* Right Section */}
               <div className="flex items-center gap-2">
                 <div className="hidden sm:flex items-center gap-2">
                   {activeTab === "saved" && currentUser.type !== "guest" && (
@@ -446,82 +448,74 @@ export default function App() {
           </div>
         </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
-        {renderPage()}
-      </main>
-
-      {/* Bottom Navigation */}
-      <nav className="sticky bottom-0 bg-background/80 backdrop-blur-md border-t">
-        <div className="max-w-6xl mx-auto px-4 py-2">
-          <div className="flex items-center justify-around">
-            <Button
-              variant={
-                activeTab === "home" ? "default" : "ghost"
-              }
-              size="sm"
-              className="flex-col h-auto py-2 px-3"
-              onClick={() => setActiveTab("home")}
-            >
-              <Home className="w-5 h-5 mb-1" />
-              <span className="text-xs">Home</span>
-            </Button>
-
-            <Button
-              variant={
-                activeTab === "explore" ? "default" : "ghost"
-              }
-              size="sm"
-              className="flex-col h-auto py-2 px-3"
-              onClick={() => setActiveTab("explore")}
-            >
-              <Search className="w-5 h-5 mb-1" />
-              <span className="text-xs">Explore</span>
-            </Button>
-
-            <Button
-              variant={
-                activeTab === "bookings" ? "default" : "ghost"
-              }
-              size="sm"
-              className="flex-col h-auto py-2 px-3"
-              onClick={() => setActiveTab("bookings")}
-            >
-              <Calendar className="w-5 h-5 mb-1" />
-              <span className="text-xs">Bookings</span>
-            </Button>
-
-            <Button
-              variant={
-                activeTab === "messages" ? "default" : "ghost"
-              }
-              size="sm"
-              className="flex-col h-auto py-2 px-3 relative"
-              onClick={() => setActiveTab("messages")}
-            >
-              <MessageCircle className="w-5 h-5 mb-1" />
-              <span className="text-xs">Messages</span>
-              {currentUser?.type !== "guest" && (
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">2</span>
-                </div>
-              )}
-            </Button>
-
-            <Button
-              variant={
-                activeTab === "profile" ? "default" : "ghost"
-              }
-              size="sm"
-              className="flex-col h-auto py-2 px-3"
-              onClick={() => setActiveTab("profile")}
-            >
-              <User className="w-5 h-5 mb-1" />
-              <span className="text-xs">Profile</span>
-            </Button>
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto min-h-0 pb-20">
+          <div className="min-h-full max-w-6xl mx-auto w-full px-4 py-6">
+            {renderPage()}
           </div>
-        </div>
-      </nav>
+        </main>
+
+        {/* Floating Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-md border-t">
+          <div className="max-w-7xl mx-auto px-2 py-2">
+            <div className="flex items-center justify-around gap-1">
+              <Button
+                variant={activeTab === "home" ? "default" : "ghost"}
+                size="sm"
+                className="flex flex-col items-center gap-1 px-3 py-2 h-auto flex-1"
+                onClick={() => setActiveTab("home")}
+              >
+                <Home className="w-5 h-5" />
+                <span className="text-xs">Home</span>
+              </Button>
+
+              <Button
+                variant={activeTab === "explore" ? "default" : "ghost"}
+                size="sm"
+                className="flex flex-col items-center gap-1 px-3 py-2 h-auto flex-1"
+                onClick={() => setActiveTab("explore")}
+              >
+                <Search className="w-5 h-5" />
+                <span className="text-xs">Explore</span>
+              </Button>
+
+              <Button
+                variant={activeTab === "bookings" ? "default" : "ghost"}
+                size="sm"
+                className="flex flex-col items-center gap-1 px-3 py-2 h-auto flex-1"
+                onClick={() => setActiveTab("bookings")}
+              >
+                <Calendar className="w-5 h-5" />
+                <span className="text-xs">Bookings</span>
+              </Button>
+
+              <Button
+                variant={activeTab === "messages" ? "default" : "ghost"}
+                size="sm"
+                className="flex flex-col items-center gap-1 px-3 py-2 h-auto flex-1 relative"
+                onClick={() => setActiveTab("messages")}
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="text-xs">Messages</span>
+                {currentUser?.type !== "guest" && (
+                  <div className="absolute top-0 right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-[10px]">2</span>
+                  </div>
+                )}
+              </Button>
+
+              <Button
+                variant={activeTab === "profile" ? "default" : "ghost"}
+                size="sm"
+                className="flex flex-col items-center gap-1 px-3 py-2 h-auto flex-1"
+                onClick={() => setActiveTab("profile")}
+              >
+                <User className="w-5 h-5" />
+                <span className="text-xs">Profile</span>
+              </Button>
+            </div>
+          </div>
+        </nav>
 
         {/* Toast Container */}
         <Toaster />
