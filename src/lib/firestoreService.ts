@@ -6,10 +6,14 @@ import {
   query,
   orderBy,
   limit,
-  Timestamp
+  Timestamp,
+  addDoc,
+  arrayUnion,
+  updateDoc
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { WorkPhoto } from "../components/mockData";
+import { auth } from "./firebase";
 
 /**
  * Firestore document structure for explore/foryou collections
@@ -145,7 +149,7 @@ export async function getExplorePosts(): Promise<WorkPhoto[]> {
 /**
  * Fetch posts from followed providers only (for ForYou page)
  */
-export async function getForYouPosts(followedProviders: string[]): Promise<WorkPhoto[]> {
+export async function getForYouPosts(followedProviderIds: string[]): Promise<WorkPhoto[]> {
   try {
     const exploreRef = collection(db, "explore");
     let querySnapshot;
@@ -159,8 +163,9 @@ export async function getForYouPosts(followedProviders: string[]): Promise<WorkP
     const posts: WorkPhoto[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data() as ExploreDocument;
-      // Only include posts from followed providers
-      if (followedProviders.includes(data.provider_name || "")) {
+      // Only include posts from followed providers (by provider_id)
+      const providerId = data.provider_id || "";
+      if (followedProviderIds.includes(providerId)) {
         posts.push(mapFirestoreToWorkPhoto(doc.id, data));
       }
     });
@@ -212,6 +217,61 @@ export async function getExplorePostsByCategory(category: string): Promise<WorkP
   } catch (error) {
     console.error("Error fetching posts by category:", error);
     throw new Error("Failed to fetch posts from Firestore");
+  }
+}
+
+/**
+ * Create a new post in the explore collection
+ */
+export async function createPost(
+  imageUrl: string,
+  description: string,
+  category: string,
+  userId: string,
+  userName: string,
+  userProfilePicture?: string
+): Promise<string> {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("User must be authenticated to create a post");
+    }
+
+    const exploreRef = collection(db, "explore");
+    const newPost: ExploreDocument = {
+      url: imageUrl,
+      description: description,
+      category: category,
+      provider_name: userName,
+      provider_id: userId,
+      profile_picture: userProfilePicture || "",
+      likes: 0,
+      verified: false,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    const docRef = await addDoc(exploreRef, newPost);
+    return docRef.id;
+  } catch (error: any) {
+    console.error("Error creating post:", error);
+    throw new Error(error.message || "Failed to create post");
+  }
+}
+
+/**
+ * Add a post ID to the user's my_posts array
+ */
+export async function addPostToUser(userId: string, postId: string): Promise<void> {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+      my_posts: arrayUnion(postId),
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error: any) {
+    console.error("Error adding post to user:", error);
+    throw new Error(error.message || "Failed to add post to user");
   }
 }
 

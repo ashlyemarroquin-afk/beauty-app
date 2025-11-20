@@ -12,6 +12,7 @@ import {
   LogOut,
   Heart,
   BookMarked,
+  Plus,
 } from "lucide-react";
 import { ForYouPage } from "./components/ForYouPage";
 import { ExplorePage } from "./components/ExplorePage";
@@ -24,6 +25,7 @@ import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner@2.0.3";
+import { CreatePostDialog } from "./components/CreatePostDialog";
 
 type TabType =
   | "home"
@@ -50,6 +52,7 @@ export default function App() {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshFollowed, setRefreshFollowed] = useState(0);
+  const [showCreatePostDialog, setShowCreatePostDialog] = useState(false);
 
   // Listen to Firebase auth state changes
   useEffect(() => {
@@ -296,6 +299,10 @@ export default function App() {
               </div>
             </div>
             <div className="flex gap-2 justify-center flex-wrap">
+              <Button onClick={() => setShowCreatePostDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Post
+              </Button>
               <Button onClick={() => setActiveTab("saved")}>
                 <BookMarked className="w-4 h-4 mr-2" />
                 My Shelf
@@ -518,6 +525,26 @@ export default function App() {
 
         {/* Toast Container */}
         <Toaster />
+
+        {/* Create Post Dialog */}
+        {currentUser && currentUser.type !== "guest" && (
+          <CreatePostDialog
+            open={showCreatePostDialog}
+            onOpenChange={setShowCreatePostDialog}
+            userId={currentUser.id}
+            userName={currentUser.name}
+            onPostCreated={() => {
+              // Refresh user data to get updated my_posts
+              if (auth.currentUser) {
+                getUserData(auth.currentUser.uid).then((userData) => {
+                  if (userData) {
+                    setCurrentUser(userData as User);
+                  }
+                });
+              }
+            }}
+          />
+        )}
       </div>
     </ThemeProvider>
   );

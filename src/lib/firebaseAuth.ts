@@ -16,7 +16,8 @@ export interface UserData {
   name: string;
   type: "consumer" | "provider";
   isOnboarded: boolean;
-  followed?: string[]; // Array of provider names the user follows
+  followed?: string[]; // Array of provider_ids the user follows
+  my_posts?: string[]; // Array of post document IDs that belong to this user
   createdAt?: any;
   updatedAt?: any;
 }
@@ -163,11 +164,11 @@ export function firebaseUserToUserData(
 }
 
 /**
- * Follow a provider
+ * Follow a provider by provider_id
  */
 export async function followProvider(
   userId: string,
-  providerName: string
+  providerId: string
 ): Promise<void> {
   try {
     const userDoc = await getDoc(doc(db, "users", userId));
@@ -178,9 +179,9 @@ export async function followProvider(
     const userData = userDoc.data() as UserData;
     const followed = userData.followed || [];
     
-    if (!followed.includes(providerName)) {
+    if (!followed.includes(providerId)) {
       await updateUserData(userId, {
-        followed: [...followed, providerName],
+        followed: [...followed, providerId],
       });
     }
   } catch (error: any) {
@@ -189,11 +190,11 @@ export async function followProvider(
 }
 
 /**
- * Unfollow a provider
+ * Unfollow a provider by provider_id
  */
 export async function unfollowProvider(
   userId: string,
-  providerName: string
+  providerId: string
 ): Promise<void> {
   try {
     const userDoc = await getDoc(doc(db, "users", userId));
@@ -205,7 +206,7 @@ export async function unfollowProvider(
     const followed = userData.followed || [];
     
     await updateUserData(userId, {
-      followed: followed.filter((name) => name !== providerName),
+      followed: followed.filter((id) => id !== providerId),
     });
   } catch (error: any) {
     throw new Error(error.message || "Failed to unfollow provider");

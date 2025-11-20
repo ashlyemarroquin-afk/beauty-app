@@ -70,7 +70,7 @@ export function ForYouPage({
   }, [followed, isGuest]);
 
   // Handle follow/unfollow
-  const handleFollowToggle = async (providerName: string, isFollowing: boolean) => {
+  const handleFollowToggle = async (providerId: string, providerName: string, isFollowing: boolean) => {
     if (isGuest || !currentUserId) {
       if (onRequireAuth) {
         onRequireAuth();
@@ -80,12 +80,12 @@ export function ForYouPage({
 
     try {
       if (isFollowing) {
-        await unfollowProvider(currentUserId, providerName);
-        setFollowed(prev => prev.filter(name => name !== providerName));
+        await unfollowProvider(currentUserId, providerId);
+        setFollowed(prev => prev.filter(id => id !== providerId));
         toast.success(`Unfollowed ${providerName}`);
       } else {
-        await followProvider(currentUserId, providerName);
-        setFollowed(prev => [...prev, providerName]);
+        await followProvider(currentUserId, providerId);
+        setFollowed(prev => [...prev, providerId]);
         toast.success(`Following ${providerName}`);
       }
       
@@ -205,10 +205,10 @@ export function ForYouPage({
               isSaved={allSavedItems.includes(pin.id)}
               onToggleSave={handleToggleSave}
               onClick={() => setSelectedPin(pin)}
-              isFollowing={followed.includes(pin.professional.name)}
+              isFollowing={followed.includes(pin.professional.id)}
               onFollowToggle={(e) => {
                 e.stopPropagation();
-                handleFollowToggle(pin.professional.name, followed.includes(pin.professional.name));
+                handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
               }}
               isGuest={isGuest}
             />
@@ -223,10 +223,10 @@ export function ForYouPage({
               isSaved={allSavedItems.includes(pin.id)}
               onToggleSave={handleToggleSave}
               onClick={() => setSelectedPin(pin)}
-              isFollowing={followed.includes(pin.professional.name)}
+              isFollowing={followed.includes(pin.professional.id)}
               onFollowToggle={(e) => {
                 e.stopPropagation();
-                handleFollowToggle(pin.professional.name, followed.includes(pin.professional.name));
+                handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
               }}
               isGuest={isGuest}
             />
@@ -241,10 +241,10 @@ export function ForYouPage({
               isSaved={allSavedItems.includes(pin.id)}
               onToggleSave={handleToggleSave}
               onClick={() => setSelectedPin(pin)}
-              isFollowing={followed.includes(pin.professional.name)}
+              isFollowing={followed.includes(pin.professional.id)}
               onFollowToggle={(e) => {
                 e.stopPropagation();
-                handleFollowToggle(pin.professional.name, followed.includes(pin.professional.name));
+                handleFollowToggle(pin.professional.id, pin.professional.name, followed.includes(pin.professional.id));
               }}
               isGuest={isGuest}
             />
@@ -263,8 +263,8 @@ export function ForYouPage({
             setViewingBusiness(selectedPin.professional.id);
             setSelectedPin(null);
           }}
-          isFollowing={followed.includes(selectedPin.professional.name)}
-          onFollowToggle={() => handleFollowToggle(selectedPin.professional.name, followed.includes(selectedPin.professional.name))}
+          isFollowing={followed.includes(selectedPin.professional.id)}
+          onFollowToggle={() => handleFollowToggle(selectedPin.professional.id, selectedPin.professional.name, followed.includes(selectedPin.professional.id))}
           isGuest={isGuest}
           currentUserId={currentUserId}
         />

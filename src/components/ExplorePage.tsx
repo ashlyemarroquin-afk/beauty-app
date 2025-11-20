@@ -35,7 +35,7 @@ export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequi
   }, [followedProviders]);
 
   // Handle follow/unfollow
-  const handleFollowToggle = async (providerName: string, isFollowing: boolean) => {
+  const handleFollowToggle = async (providerId: string, providerName: string, isFollowing: boolean) => {
     if (isGuest || !currentUserId) {
       if (onRequireAuth) {
         onRequireAuth();
@@ -45,12 +45,12 @@ export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequi
 
     try {
       if (isFollowing) {
-        await unfollowProvider(currentUserId, providerName);
-        setFollowed(prev => prev.filter(name => name !== providerName));
+        await unfollowProvider(currentUserId, providerId);
+        setFollowed(prev => prev.filter(id => id !== providerId));
         toast.success(`Unfollowed ${providerName}`);
       } else {
-        await followProvider(currentUserId, providerName);
-        setFollowed(prev => [...prev, providerName]);
+        await followProvider(currentUserId, providerId);
+        setFollowed(prev => [...prev, providerId]);
         toast.success(`Following ${providerName}`);
       }
       
@@ -197,8 +197,8 @@ export function ExplorePage({ savedItems, onToggleSave, isGuest = false, onRequi
                 photo={photo}
                 isSaved={savedItems.includes(photo.id)}
                 onToggleSave={onToggleSave}
-                isFollowing={followed.includes(photo.professional.name)}
-                onFollowToggle={() => handleFollowToggle(photo.professional.name, followed.includes(photo.professional.name))}
+                isFollowing={followed.includes(photo.professional.id)}
+                onFollowToggle={() => handleFollowToggle(photo.professional.id, photo.professional.name, followed.includes(photo.professional.id))}
                 isGuest={isGuest}
               />
             ))}
