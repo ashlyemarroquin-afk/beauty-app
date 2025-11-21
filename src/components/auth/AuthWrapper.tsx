@@ -70,15 +70,24 @@ export function AuthWrapper({ onAuthComplete, onGuestMode }: AuthWrapperProps) {
   };
 
   const handleLogin = (userData: User) => {
-    if (!userData.isOnboarded) {
-      setPendingUser(userData);
-      if (userData.type === "consumer") {
-        setCurrentFlow("consumer-onboarding");
-      } else {
-        setCurrentFlow("provider-onboarding");
+    try {
+      if (!userData || !userData.id) {
+        console.error("Invalid user data received:", userData);
+        return;
       }
-    } else {
-      onAuthComplete(userData);
+      
+      if (!userData.isOnboarded) {
+        setPendingUser(userData);
+        if (userData.type === "consumer") {
+          setCurrentFlow("consumer-onboarding");
+        } else {
+          setCurrentFlow("provider-onboarding");
+        }
+      } else {
+        onAuthComplete(userData);
+      }
+    } catch (error) {
+      console.error("Error handling login:", error);
     }
   };
 

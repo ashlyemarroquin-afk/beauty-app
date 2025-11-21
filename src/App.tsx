@@ -25,9 +25,11 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner@2.0.3";
 import { CreatePostDialog } from "./components/CreatePostDialog";
+import { EditProfileDialog } from "./components/EditProfileDialog";
 
 type TabType =
   | "home"
@@ -44,6 +46,7 @@ interface User {
   name: string;
   type: "consumer" | "provider" | "guest";
   isOnboarded: boolean;
+  profile_picture?: string;
   followed?: string[];
 }
 
@@ -55,6 +58,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshFollowed, setRefreshFollowed] = useState(0);
   const [showCreatePostDialog, setShowCreatePostDialog] = useState(false);
+  const [showEditProfileDialog, setShowEditProfileDialog] = useState(false);
 
   // Listen to Firebase auth state changes
   useEffect(() => {
@@ -271,7 +275,12 @@ export default function App() {
         return (
           <div className="flex items-center justify-center min-h-full">
             <div className="max-w-2xl text-center py-12">
-              <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <Avatar className="w-24 h-24 mx-auto mb-4">
+                <AvatarImage src={currentUser.profile_picture} alt={currentUser.name} />
+                <AvatarFallback>
+                  <User className="w-12 h-12" />
+                </AvatarFallback>
+              </Avatar>
               <h2 className="mb-2">Your Profile</h2>
               <p className="text-muted-foreground mb-4">
                 Welcome back, {currentUser.name}!
@@ -309,7 +318,9 @@ export default function App() {
                     </Badge>
                   )}
                 </Button>
-                <Button variant="outline">Edit Profile</Button>
+                <Button variant="outline" onClick={() => setShowEditProfileDialog(true)}>
+                  Edit Profile
+                </Button>
                 {currentUser.type === "provider" && (
                   <Button
                     variant="outline"
@@ -527,6 +538,7 @@ export default function App() {
             onOpenChange={setShowCreatePostDialog}
             userId={currentUser.id}
             userName={currentUser.name}
+            userProfilePicture={currentUser.profile_picture}
             onPostCreated={() => {
               // Refresh user data to get updated my_posts
               if (auth.currentUser) {
@@ -536,6 +548,31 @@ export default function App() {
                   }
                 });
               }
+            }}
+          />
+        )}
+
+        {/* Edit Profile Dialog */}
+        {currentUser && currentUser.type !== "guest" && (
+          <EditProfileDialog
+            open={showEditProfileDialog}
+            onOpenChange={setShowEditProfileDialog}
+            userId={currentUser.id}
+            currentName={currentUser.name}
+            currentProfilePicture={currentUser.profile_picture}
+            onProfileUpdated={() => {
+              // Refresh user data to get updated profile (async to avoid blocking)
+              setTimeout(() => {
+                if (auth.currentUser) {
+                  getUserData(auth.currentUser.uid).then((userData) => {
+                    if (userData) {
+                      setCurrentUser(userData as User);
+                    }
+                  }).catch((error) => {
+                    console.error("Error refreshing user data:", error);
+                  });
+                }
+              }, 200);
             }}
           />
         )}
